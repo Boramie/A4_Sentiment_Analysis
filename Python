@@ -1,0 +1,174 @@
+import pickle
+
+def read_text(text_path):
+    '''
+    (str) -> list
+    Reads and returns a list of comments from the text file in the given path
+    
+    Example:
+    >>> text.txt
+        user1,Hello
+        user2,How are you today?
+        
+        read_text('text.txt')
+        text_list
+        ['Hello \n', 'How are you today? \n']
+    '''
+    try:
+        fobj = open(text_path, 'r')
+        text_list = []
+        for line in fobj:
+            # Create list of user pseudonym and comment
+            pseudo_comment_list = line.split(',')
+            # Add comment only to text_list
+            text_list.append(pseudo_comment_list[1]) 
+        
+        fobj.close()
+        return text_list
+    
+    except FileNotFoundError:
+        print('File does not exist')
+
+def read_pickle(path_to_pkl):
+    '''
+    (str) -> dict
+    Reads and returns the dictionary in given pickle file
+    
+    Example:
+    >>> read_pickle('sentiment_dictionary.pkl')
+        {'POSITIVE': ['great', 'love', 'recommend', 'laugh', 'happy',
+        'brilliant'], 'NEGATIVE': ['terrible', 'awful', 'hideous', 'sad',
+        'cry', 'bad'], 'NEUTRAL': ['meh', 'indifferent', 'ignore']}
+    '''
+    fobj = open(path_to_pkl, 'rb')
+    word_dict = pickle.load(fobj)
+    fobj.close()
+    return word_dict
+
+def sentiment_frequencies(text, dictionary_word):
+    '''
+    (str, dict) -> dict
+    Returns a dictionary of the frequency of each sentiment category appearing
+    in the given text by comparing each word to the ones in dictionary_word
+    
+    Examples:
+    >>> sentiment_frequencies('i love this movie it is great and the adventure
+        scenes are fun i highly recommend it but the theatre was terrible and 
+        there was an awful smell', {'POSITIVE': ['great', 'love', 'recommend', 
+        'laugh', 'happy', 'brilliant'], 'NEGATIVE': ['terrible', 'awful', 
+        'hideous', 'sad', 'cry', 'bad'], 'NEUTRAL': ['meh', 'indifferent', 
+        'ignore']})
+        {'POSITIVE': 0.11, 'NEGATIVE': 0.07, 'NEUTRAL': 0.0}
+
+    >>> sentiment_frequencies('the food was so bad, everything tasted
+        terrible', {'POSITIVE': ['great', 'love', 'recommend', 
+        'laugh', 'happy', 'brilliant'], 'NEGATIVE': ['terrible', 'awful', 
+        'hideous', 'sad', 'cry', 'bad'], 'NEUTRAL': ['meh', 'indifferent', 
+        'ignore']})
+        {'POSITIVE': 0.0, 'NEGATIVE': 0.12, 'NEUTRAL': 0.0}
+
+    >>> sentiment_frequencies('try to ignore the comments, they are just sad',
+        {'POSITIVE': ['great', 'love', 'recommend', 'laugh', 'happy', 
+        'brilliant'], 'NEGATIVE': ['terrible', 'awful', 'hideous', 'sad', 
+        'cry', 'bad'], 'NEUTRAL': ['meh', 'indifferent', 'ignore']})
+        {'POSITIVE': 0.0, 'NEGATIVE': 0.11, 'NEUTRAL': 0.11}
+    '''
+    # Create list of individual words in given text
+    words = text.split(' ')
+    num_words = len(words)
+    
+    # Create dictionary of sentiment frequency
+    dict_frequency = dict()
+    
+    # Analyze each word in given text
+    positive_words = 0
+    negative_words = 0
+    neutral_words = 0
+    
+    for word in words:
+        if word in dictionary_word['POSITIVE']:
+            positive_words += 1
+        elif word in dictionary_word['NEGATIVE']:
+            negative_words += 1
+        elif word in dictionary_word['NEUTRAL']:
+            neutral_words += 1
+        else:
+            continue
+    
+    # Add sentiment frequencies to dictionary
+    dict_frequency['POSITIVE'] = round(positive_words / num_words, 2)
+    dict_frequency['NEGATIVE'] = round(negative_words / num_words, 2)
+    dict_frequency['NEUTRAL'] = round(neutral_words / num_words, 2)
+    
+    return dict_frequency
+
+def compute_polarity(dict_frequency):
+    '''
+    (dict) -> str
+    Returns sentiment with the highest frequency
+    
+    Examples:
+    >>> compute_polarity({'POSITIVE': 0.11, 'NEGATIVE': 0.07, 'NEUTRAL': 0.0})
+        POSITIVE
+
+    >>> compute_polarity({'POSITIVE': 0.0, 'NEGATIVE': 0.12, 'NEUTRAL': 0.0})
+        NEGATIVE
+
+    >>> compute_polarity({'POSITIVE': 0.0, 'NEGATIVE': 0.11, 'NEUTRAL': 0.11})
+        NEGATIVE
+    '''
+    frequency = 0
+    polarity = ''
+
+    for sentiment in dict_frequency:
+        if dict_frequency[sentiment] > frequency:
+            polarity = sentiment
+            frequency = dict_frequency[sentiment]
+        else:
+            continue
+    return polarity
+
+def analyse_text(text_path, dict_path):
+    '''
+    (str, str) -> list
+    Reads given files and returns a list of polarity per line
+    
+    Examples:
+    >>> analyse_text('posts.txt', 'sentiment_dictionary.pkl')
+        ['POSITIVE', 'NEGATIVE', 'NEUTRAL', 'POSITIVE']
+
+    >>> text.txt
+        user1,I love food
+        user2,It makes me happy
+    
+        analyse_text('text.txt', 'sentiment_dictionary.pkl')
+        ['POSITIVE', 'POSITIVE']
+
+    >>> comment.txt
+        user1,my life is terrible
+        user2,ignore what i said
+        user3,it's actually great
+
+        analyse_text('comment.txt', 'sentiment_dictionary.pkl')
+        ['NEGATIVE', 'NEUTRAL', 'POSITIVE']
+    '''
+    # Read files
+    text = read_text(text_path) #line list
+    dict = read_pickle(dict_path)
+    
+    # Analyse text
+    list_polarity = []
+    
+    for line in text:
+        line = line.lower().strip()
+        # Remove stop words
+        for char in line:
+            if char in ['!','.','?',';','\n']:
+                line = line.replace(char, '')
+
+        dict_frequency = sentiment_frequencies(line, dict)
+        polarity = compute_polarity(dict_frequency)
+        
+        list_polarity.append(polarity)
+    
+    return list_polarity
